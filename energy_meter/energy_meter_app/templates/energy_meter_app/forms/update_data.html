@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "energy_meter_app/admin_navbar/header.html" %}
+
+<body>
+
+  {% include "energy_meter_app/admin_navbar/navbar.html" %}
+  {% include "energy_meter_app/admin_navbar/aside.html" %}
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <h1>Update Meter Data</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}">Home</a></li>
+          <li class="breadcrumb-item">Data</li>
+          <li class="breadcrumb-item active">Update Data</li>
+        </ol>
+      </nav>
+    </div>
+
+    {% if messages %}
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-12">
+          {% for message in messages %}
+          <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show text-center" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Update Meter Data</h5>
+              <form class="row g-3" method="POST" action="{% url 'update_data' data.id %}">
+                {% csrf_token %}
+                <div class="col-md-12">
+                  <label for="serial_number">Meter Serial Number</label>
+                  <input type="text" name="serial_number" id="serial_number" class="form-control" value="{{ data.serial_number }}" readonly>
+                </div>
+
+                <div class="col-md-12">
+                  <label for="voltage">Voltage</label>
+                  <input type="text" name="voltage" id="voltage" class="form-control" value="{{ data.voltage }}">
+                </div>
+
+                <div class="col-md-12">
+                  <label for="current">Current</label>
+                  <input type="text" name="current" id="current" class="form-control" value="{{ data.current }}">
+                </div>
+
+                <div class="col-md-12">
+                  <label for="energy">Energy Consumed (kWh)</label>
+                  <input type="text" name="energy" id="energy" class="form-control" value="{{ data.energy }}">
+                </div>
+
+                <div class="col-md-12">
+                  <label for="power_factor">Power Factor</label>
+                  <input type="text" name="power_factor" id="power_factor" class="form-control" value="{{ data.power_factor }}">
+                </div>
+
+                <div class="col-md-12">
+                  <label for="unit_price">Unit Price</label>
+                  <input type="text" name="unit_price" id="unit_price" class="form-control" value="{{ data.unit_price }}">
+                </div>
+
+                <div class="text-center mt-5">
+                  <button type="submit" class="btn btn-primary">Update</button>
+                  <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+  </main>
+
+  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
+
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+  <script>
+    let energyConsumption = 0;
+    let simulationInterval;
+
+    // Start the simulation on page load
+    document.addEventListener("DOMContentLoaded", startSimulation);
+
+    document.getElementById("serial_number-id").addEventListener("change", function() {
+      clearInterval(simulationInterval);  // Clear existing interval
+      energyConsumption = 0;  // Reset energy for new meter
+      startSimulation();
+    });
+
+    function startSimulation() {
+      const voltageField = document.getElementById("voltage");
+      const currentField = document.getElementById("current");
+      const powerFactorField = document.getElementById("power_factor");
+      const energyField = document.getElementById("energy");
+
+      simulationInterval = setInterval(() => {
+        // Simulate dynamic readings
+        const voltage = getRandomValue(220, 240);
+        const current = getRandomValue(0.5, 5);
+        const powerFactor = getRandomValue(0.85, 1);
+
+        // Calculate power and update energy (kWh)
+        const power = voltage * current * powerFactor;
+        energyConsumption += power / 3600;
+
+        // Update input fields
+        voltageField.value = voltage.toFixed(2);
+        currentField.value = current.toFixed(2);
+        powerFactorField.value = powerFactor.toFixed(2);
+        energyField.value = energyConsumption.toFixed(2);
+
+      }, 1000);  // Update every second
+    }
+
+    function getRandomValue(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+</script>
+
+</body>
+
+</html>

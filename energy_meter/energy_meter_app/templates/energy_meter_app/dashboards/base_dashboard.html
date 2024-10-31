@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta content="width=device-width, initial-scale=1.0" name="viewport">  
+      <title>{% block title %}Dashboard{% endblock %}</title>
+      <meta content="" name="description">
+      <meta content="" name="keywords">
+      {% block head %}{% endblock %}
+      <link href="https://fonts.gstatic.com" rel="preconnect">
+      <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+    
+      <link href="{% static 'assets/vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/bootstrap-icons/bootstrap-icons.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/boxicons/css/boxicons.min.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/quill/quill.snow.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/quill/quill.bubble.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/remixicon/remixicon.css' %}" rel="stylesheet">
+      <link href="{% static 'assets/vendor/simple-datatables/style.css' %}" rel="stylesheet">
+    
+      <link href="{% static 'assets/css/style.css' %}" rel="stylesheet">
+    
+    </head>
+<body>
+    <header>
+        <h1>{{ dashboard_type }} Dashboard</h1>
+        <nav>
+            <ul>
+                <li><a href="{% url 'index_page' %}">Home</a></li>
+                {% if user.is_superuser %}
+                    <li><a href="{% url 'admin_dashboard' %}">Admin Dashboard</a></li>
+                {% elif user.is_authenticated %}
+                    <li><a href="{% url 'staff_dashboard' %}">Staff Dashboard</a></li>
+                    <li><a href="{% url 'client_dashboard' %}">Client Dashboard</a></li>
+                {% endif %}
+                <li><a href="{% url 'logout_view' %}">Logout</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}
+        <!-- Content specific to each dashboard will go here -->
+        {% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; {{ year }} Your Company Name. All Rights Reserved.</p>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,117 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "energy_meter_app/admin_navbar/header.html" %}
+
+<body>
+
+  {% include "energy_meter_app/admin_navbar/navbar.html" %}
+  {% include "energy_meter_app/admin_navbar/aside.html" %}
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <h1>Update Energy Meter</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'admin_dashboard' %}">Home</a></li>
+          <li class="breadcrumb-item">Meter</li>
+          <li class="breadcrumb-item active">Update Meter</li>
+        </ol>
+      </nav>
+    </div>
+
+    {% if messages %}
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-12">
+          {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show text-center" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Update Meter | Form</h5>
+              <form class="row g-3" method="POST">
+                {% csrf_token %}
+                
+                <!-- Serial Number Input (Pre-filled) -->
+                <div class="col-md-12">
+                  <input type="number" name="serial_number" class="form-control" placeholder="Serial Number" value="{{ meter.serial_number }}" required>
+                </div>
+
+                <!-- Owner Selection with Datalist (Pre-filled) -->
+                <div class="col-md-12">
+                  <input type="text" name="national_id" id="national-id" class="form-control" placeholder="Owner National ID" list="userprofile-list" value="{{ meter.owner.national_id }}" required>
+                  <datalist id="userprofile-list">
+                    {% for userprofile in userprofiles %}
+                    <option value="{{ userprofile.national_id }}">{{ userprofile.national_id }} - {{ userprofile.name }}</option>
+                    {% endfor %}
+                  </datalist>
+                </div>
+
+                <!-- Hidden fields for additional user information if ID not found -->
+                <div id="new-user-fields" style="display: none;">
+                  <div class="col-md-12">
+                    <input type="text" name="name" class="form-control" placeholder="Name" value="{{ meter.owner.name }}">
+                  </div>
+                  <div class="col-md-12 mt-3">
+                    <input type="number" name="phone_number" class="form-control" placeholder="Phone Number" value="{{ meter.owner.phone_number }}">
+                  </div>
+                  <div class="col-12 mt-3">
+                    <input type="text" name="address" class="form-control" placeholder="Address" value="{{ meter.owner.address }}">
+                  </div>
+                  <div class="col-md-12 mt-3">
+                    <select name="role" class="form-select">
+                      <option>Choose Role</option>
+                      <option value="Staff" {% if meter.owner.role == 'Staff' %}selected{% endif %}>Staff</option>
+                      <option value="Client" {% if meter.owner.role == 'Client' %}selected{% endif %}>Client</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="text-center mt-5">
+                  <button type="submit" class="btn btn-primary">Update Meter</button>
+                  <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+  </main>
+
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+  <script>
+    document.getElementById("national-id").addEventListener("input", function() {
+      const nationalIdInput = this.value;
+      const userOptions = document.getElementById("userprofile-list").options;
+      let userExists = false;
+
+      for (let option of userOptions) {
+        if (option.value === nationalIdInput) {
+          userExists = true;
+          break;
+        }
+      }
+
+      // Show or hide the new user fields based on whether the national ID exists
+      document.getElementById("new-user-fields").style.display = userExists ? "none" : "block";
+    });
+  </script>
+
+</body>
+</html>

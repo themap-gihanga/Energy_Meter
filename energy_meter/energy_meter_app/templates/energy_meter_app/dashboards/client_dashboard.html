@@ -108,53 +108,9 @@
 
         </li>
 
-        <li class="nav-item dropdown pe-3">
-
-          <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-            {% comment %} <img src="{% static 'assets/img/profile-img.jpg' %}" alt="Profile" class="rounded-circle"> {% endcomment %}
-            <span class="d-none d-md-block dropdown-toggle ps-2">User</span>
-          </a>
-
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-            <li class="dropdown-header">
-              <h6>Client</h6>
-            </li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="bi bi-person"></i>
-                <span>My Profile</span>
-              </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="bi bi-question-circle"></i>
-                <span>Need Help?</span>
-              </a>
-            </li>
-            <li>
-              <hr class="dropdown-divider">
-            </li>
-
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Sign Out</span>
-              </a>
-            </li>
-
-          </ul>
-        </li>
+        {% extends "energy_meter_app/base.html.html" %}
+        {% block content %}
+        {% endblock content %}
 
       </ul>
     </nav>
@@ -376,7 +332,28 @@
   <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
 
   <script src="{% static 'assets/js/main.js' %}"></script>
-
+  <script>
+    // Handle messages
+    {% if messages %}
+        {% for message in messages %}
+            // Using Bootstrap's toast or alert system
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-{{ message.tags }} alert-dismissible fade show';
+            alertDiv.setAttribute('role', 'alert');
+            alertDiv.innerHTML = `
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.insertBefore(alertDiv, document.body.firstChild);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                const bsAlert = bootstrap.Alert.getOrCreateInstance(alertDiv);
+                bsAlert.close();
+            }, 5000);
+        {% endfor %}
+    {% endif %}
+</script>
 </body>
 
 </html>

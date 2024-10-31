@@ -1,0 +1,201 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "energy_meter_app/admin_navbar/header.html" %}
+
+<body>
+
+  {% include "energy_meter_app/admin_navbar/navbar.html" %}
+
+  {% include "energy_meter_app/admin_navbar/aside.html" %}
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <h1>Table Of Users</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url "admin_dashboard" %}">Home</a></li>
+          <li class="breadcrumb-item">Users</li>
+          <li class="breadcrumb-item active">Manage Users</li>
+        </ol>
+      </nav>
+    </div>
+    
+    {% if messages %}
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-12">
+          {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show text-center" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    
+    {% csrf_token %}
+    <section class="section">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Manage Users</h5>
+
+                        <table class="table datatable table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>National ID</th>
+                                    <th>Phone</th>
+                                    <th>Address</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.name }}</td>
+                                    <td>{{ user.national_id }}</td>
+                                    <td>{{ user.phone_number }}</td>
+                                    <td>{{ user.address }}</td>
+                                    <td>{{ user.status }}</td>
+                                    <td>
+                                        <span class="badge {% if user.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                            {{ user.is_active|yesno:"Active,Inactive" }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.created_at }}</td>
+                                    <td>
+                                        <div class="dropdown">
+                                            <button class="btn btn-secondary btn-sm dropdown-toggle" type="button" id="actionDropdown{{ user.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                                Actions
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="actionDropdown{{ user.id }}">
+                                                {% if user.is_active %}
+                                                    <li><a class="dropdown-item text-warning" href="{% url 'deactivate_user' user.id %}">
+                                                        <i class="bi bi-pause-circle"></i> Deactivate
+                                                    </a></li>
+                                                {% else %}
+                                                    <li><a class="dropdown-item text-success" href="{% url 'activate_user' user.id %}">
+                                                        <i class="bi bi-play-circle"></i> Activate
+                                                    </a></li>
+                                                {% endif %}
+                                                <li><a class="dropdown-item text-info" href="{% url 'update_user' user.id %}">
+                                                    <i class="bi bi-pencil-square"></i> Update
+                                                </a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item text-danger" href="#" onclick="initiateDelete('{{ user.id }}', '{{ user.name }}'); return false;">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+  </main>
+
+  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
+  <script src="{% static 'assets/vendor/simple-datatables/simple-datatables.js' %}"></script>
+  <script src="{% static 'assets/vendor/tinymce/tinymce.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/php-email-form/validate.js' %}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
+
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            function initiateDelete(userId, userName) {
+                Swal.fire({
+                    title: 'Delete User',
+                    html: `Are you sure you want to delete user <strong>${userName}</strong>?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, proceed',
+                    cancelButtonText: 'No, cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Second confirmation
+                        Swal.fire({
+                            title: 'Final Confirmation',
+                            html: `This will permanently delete user <strong>${userName}</strong>.<br>This action cannot be undone!`,
+                            icon: 'error',
+                            showCancelButton: true,
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            confirmButtonText: 'Yes, delete!',
+                            cancelButtonText: 'No, keep user'
+                        }).then((finalResult) => {
+                            if (finalResult.isConfirmed) {
+                                // Get CSRF token from the cookie
+                                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                                
+                                // Send delete request
+                                fetch(`/delete_user/${userId}/`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRFToken': csrftoken,
+                                        'Content-Type': 'application/json',
+                                    },
+                                    credentials: 'same-origin'  // This is important for cookies
+                                })
+                                .then(response => response.json())  // Parse JSON response
+                                .then(data => {
+                                    if (data.status === 'success') {
+                                        Swal.fire({
+                                            title: 'Deleted!',
+                                            text: data.message,
+                                            icon: 'success'
+                                        }).then(() => {
+                                            window.location.reload();
+                                        });
+                                    } else {
+                                        Swal.fire(
+                                            'Error!',
+                                            data.message || 'Failed to delete user.',
+                                            'error'
+                                        );
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    Swal.fire(
+                                        'Error!',
+                                        'An error occurred while deleting the user.',
+                                        'error'
+                                    );
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        
+            // Make initiateDelete available globally
+            window.initiateDelete = initiateDelete;
+        });
+    </script>
+
+</body>
+
+</html>

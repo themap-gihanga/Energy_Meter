@@ -1,0 +1,84 @@
+{% load static %}
+<aside id="sidebar" class="sidebar">
+
+    <ul class="sidebar-nav" id="sidebar-nav">
+
+      <li class="nav-item">
+        <a class="nav-link " href="{% url 'admin_dashboard' %}">
+          <i class="bi bi-grid"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link collapsed" data-bs-target="#meter-nav" data-bs-toggle="collapse" href="#">
+            <i class="bi bi-speedometer2"></i><span>Meter</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="meter-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="{% url "add_meter" %}">
+              <i class="bi bi-circle"></i><span>Add Meter</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "manage_meter" %}">
+              <i class="bi bi-circle"></i><span>Manage Meter</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "report_meters" %}">
+              <i class="bi bi-circle"></i><span>Report</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link collapsed" data-bs-target="#users-nav" data-bs-toggle="collapse" href="#">
+            <i class="bi bi-person-circle"></i><span>Users</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="users-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="{% url "add_user" %}">
+              <i class="bi bi-circle"></i><span>Add User</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "manage_users" %}">
+              <i class="bi bi-circle"></i><span>Manage User</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "report_users" %}">
+              <i class="bi bi-circle"></i><span>Report</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link collapsed" data-bs-target="#data-nav" data-bs-toggle="collapse" href="#">
+            <i class="bi bi-database-fill-gear"></i><span>Data</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="data-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="{% url "add_data" %}">
+              <i class="bi bi-circle"></i><span>Add Data</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "manage_data" %}">
+              <i class="bi bi-circle"></i><span>Manage Data</span>
+            </a>
+          </li>
+          <li>
+            <a href="{% url "report_data" %}">
+              <i class="bi bi-circle"></i><span>Report</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+    </ul>
+
+  </aside>

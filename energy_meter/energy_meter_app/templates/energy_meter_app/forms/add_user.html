@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "energy_meter_app/admin_navbar/header.html" %}
+
+<body>
+
+  {% include "energy_meter_app/admin_navbar/navbar.html" %}
+
+  {% include "energy_meter_app/admin_navbar/aside.html" %}
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <h1>Add Users</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url "admin_dashboard" %}">Home</a></li>
+          <li class="breadcrumb-item">Users</li>
+          <li class="breadcrumb-item active">Add User</li>
+        </ol>
+      </nav>
+    </div>
+    
+    {% if messages %}
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-12">
+          {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show text-center" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Add User | Form</h5>
+  
+              <form class="row g-3" method="POST">
+                {% csrf_token %}
+                <div class="col-md-12">
+                  <input type="text" name="name" class="form-control" placeholder="Name" required>
+                </div>
+                <div class="col-md-12">
+                  <input type="number" name="national_id" class="form-control" placeholder="National Id" required>
+                </div>
+                <div class="col-md-12">
+                  <input type="number" name="phone_number" class="form-control" placeholder="Phone Number" required>
+                </div>
+                <div class="col-12">
+                  <input type="text" name="address" class="form-control" placeholder="Address">
+                </div>
+                <div class="col-md-12">
+                  <select id="inputState" name="role" class="form-select">
+                    <option selected>Choose Role</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Client">Client</option>
+                  </select>
+                </div>
+                <div class="text-center mt-5">
+                  <button type="submit" class="btn btn-primary">Submit</button>
+                  <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+              </form>
+              
+  
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+  </main>
+
+  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
+
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+</body>
+
+</html>
