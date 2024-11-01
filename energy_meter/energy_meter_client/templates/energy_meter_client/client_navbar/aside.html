@@ -1,0 +1,38 @@
+{% load static %}
+<aside id="sidebar" class="sidebar">
+
+    <ul class="sidebar-nav" id="sidebar-nav">
+
+      <li class="nav-item">
+        <a class="nav-link collapsed" data-bs-target="#meter-nav" data-bs-toggle="collapse" href="#">
+            <i class="bi bi-speedometer2"></i><span>Service</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="meter-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+          <li>
+            <a href="{% url "buy_power_form" %}">
+              <i class="bi bi-circle"></i><span>Buy Subscription</span>
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <i class="bi bi-circle"></i><span>View My Energy Meter</span>
+            </a>
+          </li>
+          <li>
+            <a href="#">
+              <i class="bi bi-circle"></i><span>Report</span>
+            </a>
+          </li>
+        </ul>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="#">
+          <i class="bi bi-question-circle"></i>
+          <span>F.A.Q</span>
+        </a>
+      </li><!-- End F.A.Q Page Nav -->
+
+    </ul>
+
+  </aside>

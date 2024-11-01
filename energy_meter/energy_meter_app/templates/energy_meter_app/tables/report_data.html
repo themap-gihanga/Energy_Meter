@@ -50,10 +50,17 @@
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-body">
-                        <h5 class="card-title">Energy Meter's Report</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title">Energy Meter's Report</h5>
+                            {% if show_table and datas %}
+                            <button id="downloadCSV" class="btn btn-success">
+                                <i class="bi bi-download"></i> Download CSV
+                            </button>
+                            {% endif %}
+                        </div>
     
                         {% if show_table and datas %}
-                        <table class="table datatable table-sm">
+                        <table class="table datatable table-sm" id="energyDataTable">
                             <thead>
                                 <tr>
                                   <th>Serial Number</th>
@@ -82,7 +89,7 @@
                             </tbody>
                         </table>
                         {% else %}
-                        <p>No users found for the selected date range.</p>
+                        <p>No Data found for the selected date range.</p>
                         {% endif %}
                     </div>
                 </div>
@@ -101,5 +108,115 @@
   <script src="{% static 'assets/vendor/php-email-form/validate.js' %}"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.all.min.js"></script>
   <script src="{% static 'assets/js/main.js' %}"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('downloadCSV')) {
+            const dataTable = new simpleDatatables.DataTable("#energyDataTable");
+            
+            document.getElementById('downloadCSV').addEventListener('click', function() {
+                // Create Excel XML content with borders
+                let excelContent = `
+                    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                    <head>
+                        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+                        <!--[if gte mso 9]>
+                        <xml>
+                            <x:ExcelWorkbook>
+                                <x:ExcelWorksheets>
+                                    <x:ExcelWorksheet>
+                                        <x:Name>Energy Meter Report</x:Name>
+                                        <x:WorksheetOptions>
+                                            <x:DisplayGridlines/>
+                                        </x:WorksheetOptions>
+                                    </x:ExcelWorksheet>
+                                </x:ExcelWorksheets>
+                            </x:ExcelWorkbook>
+                        </xml>
+                        <![endif]-->
+                        <style>
+                            table {
+                                border-collapse: collapse;
+                                width: 100%;
+                            }
+                            th, td {
+                                border: 1px solid #000000;
+                                padding: 5px;
+                                text-align: left;
+                                vertical-align: top;
+                            }
+                            th {
+                                background-color: #f2f2f2;
+                                font-weight: bold;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <table>
+                            <thead>
+                                <tr>`;
+
+                // Get headers
+                const headers = [];
+                document.querySelectorAll('#energyDataTable thead th').forEach(th => {
+                    const headerText = th.textContent.trim();
+                    headers.push(headerText);
+                    excelContent += `<th>${headerText}</th>`;
+                });
+
+                excelContent += `</tr></thead><tbody>`;
+
+                // Get data rows and format them
+                document.querySelectorAll('#energyDataTable tbody tr').forEach(tr => {
+                    excelContent += '<tr>';
+                    tr.querySelectorAll('td').forEach((td, index) => {
+                        let value = td.textContent.trim();
+                        
+                        // Apply number formatting based on column type
+                        if (index === 1 || index === 2) { // Voltage and Current
+                            value = parseFloat(value).toFixed(2);
+                        } else if (index === 3) { // Energy
+                            value = parseFloat(value).toFixed(3);
+                        } else if (index === 4) { // Power Factor
+                            value = parseFloat(value).toFixed(3);
+                        } else if (index === 5) { // Unit Price
+                            value = parseFloat(value).toFixed(2);
+                        }
+                        
+                        excelContent += `<td>${value}</td>`;
+                    });
+                    excelContent += '</tr>';
+                });
+
+                excelContent += `</tbody></table></body></html>`;
+
+                // Create blob with Excel content
+                const blob = new Blob([excelContent], { 
+                    type: 'application/vnd.ms-excel;charset=utf-8'
+                });
+
+                // Create download link
+                const link = document.createElement('a');
+                if (navigator.msSaveBlob) {
+                    navigator.msSaveBlob(blob, 'energy_meter_report.xls');
+                } else {
+                    link.href = window.URL.createObjectURL(blob);
+                    link.setAttribute('download', 'energy_meter_report.xls');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+
+                // Show success message
+                Swal.fire({
+                    title: 'Success!',
+                    text: 'Report has been downloaded successfully',
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                });
+            });
+        }
+    });
+</script>
 </body>
 </html>

@@ -48,13 +48,11 @@
                 <div class="filter">
                   <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
                   <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                    <li class="dropdown-header text-start">
-                      <h6>Filter</h6>
-                    </li>
-
-                    <li><a class="dropdown-item" href="#">Today</a></li>
-                    <li><a class="dropdown-item" href="#">This Month</a></li>
-                    <li><a class="dropdown-item" href="#">This Year</a></li>
+                    <li class="dropdown-header text-start"><h6>Filter</h6></li>
+                    <li><a class="dropdown-item" href="?meter_filter=today&user_filter={{ user_filter }}&data_filter={{ data_filter }}">Today</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter=this_month&user_filter={{ user_filter }}&data_filter={{ data_filter }}">This Month</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter=this_year&user_filter={{ user_filter }}&data_filter={{ data_filter }}">This Year</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter=all&user_filter={{ user_filter }}&data_filter={{ data_filter }}">All Time</a></li>
                   </ul>
                 </div>
 
@@ -66,7 +64,7 @@
                         <i class="bi bi-speedometer2"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>0</h6>
+                      <h6>{{ total_meters }}</h6>
                     </div>
                   </div>
                 </div>
@@ -80,13 +78,11 @@
                 <div class="filter">
                   <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
                   <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                    <li class="dropdown-header text-start">
-                      <h6>Filter</h6>
-                    </li>
-
-                    <li><a class="dropdown-item" href="#">Today</a></li>
-                    <li><a class="dropdown-item" href="#">This Month</a></li>
-                    <li><a class="dropdown-item" href="#">This Year</a></li>
+                    <li class="dropdown-header text-start"><h6>Filter</h6></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter=today&data_filter={{ data_filter }}">Today</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter=this_month&data_filter={{ data_filter }}">This Month</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter=this_year&data_filter={{ data_filter }}">This Year</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter=all&data_filter={{ data_filter }}">All Time</a></li>
                   </ul>
                 </div>
 
@@ -98,7 +94,7 @@
                         <i class="bi bi-person-circle"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>0</h6>
+                      <h6>{{ total_users }}</h6>
                     </div>
                   </div>
                 </div>
@@ -113,13 +109,11 @@
                 <div class="filter">
                   <a class="icon" href="#" data-bs-toggle="dropdown"><i class="bi bi-three-dots"></i></a>
                   <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                    <li class="dropdown-header text-start">
-                      <h6>Filter</h6>
-                    </li>
-
-                    <li><a class="dropdown-item" href="#">Today</a></li>
-                    <li><a class="dropdown-item" href="#">This Month</a></li>
-                    <li><a class="dropdown-item" href="#">This Year</a></li>
+                    <li class="dropdown-header text-start"><h6>Filter</h6></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter={{ user_filter }}&data_filter=today">Today</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter={{ user_filter }}&data_filter=this_month">This Month</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter={{ user_filter }}&data_filter=this_year">This Year</a></li>
+                    <li><a class="dropdown-item" href="?meter_filter={{ meter_filter }}&user_filter={{ user_filter }}&data_filter=all">All Time</a></li>
                   </ul>
                 </div>
 
@@ -131,7 +125,7 @@
                         <i class="bi bi-database-fill-gear"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>0</h6>
+                      <h6>{{ total_data_entries }}</h6>
                     </div>
                   </div>
 
@@ -156,7 +150,7 @@
   <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
   <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
 
-  <script src="{% static 'assets/js/main.js' %}"></script>
+  <script src="{% static 'assets/js/main.js' %}"></script><script src="{% static 'js/notifications.js' %}"></script>
 </body>
 
 </html>

@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<body>
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <h1>Buy Electricity</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url "buy_power_form" %}">Buy Power</a></li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Buy Power</h5>
+              
+              <!-- Step 1 Form -->
+              <form id="form-step-1" class="row g-3 form-step" method="POST">
+                {% csrf_token %}
+                <div class="col-md-12">
+                  <input type="number" name="serial_number" class="form-control" placeholder="Serial Number" required>
+                </div>
+                <div class="col-md-12">
+                  <input type="number" name="national_id" class="form-control" placeholder="National ID Number" required>
+                </div>
+                <div class="text-center mt-5">
+                  <button type="button" class="btn btn-primary" onclick="nextForm(1, 2)">Next</button>
+                </div>
+              </form>
+              
+              <!-- Step 2 Form -->
+              <form id="form-step-2" class="row g-3 form-step" method="POST" style="display: none;">
+                {% csrf_token %}
+                <div class="col-md-12">
+                  <input type="number" name="amount" class="form-control" placeholder="Amount" required>
+                </div>
+                <div class="text-center mt-5">
+                  <button type="button" class="btn btn-secondary" onclick="prevForm(1)">Back</button>
+                  <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+              </form>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
+  <script src="{% static 'assets/js/main.js' %}"></script>
+  
+  <script>
+    function nextForm(currentStep, nextStep) {
+      const form = document.getElementById(`form-step-${currentStep}`);
+      if (form.checkValidity()) {
+        document.querySelectorAll('.form-step').forEach(f => f.style.display = 'none');
+        document.getElementById(`form-step-${nextStep}`).style.display = 'block';
+      } else {
+        form.reportValidity();  // This triggers the browser's built-in validation UI
+      }
+    }
+
+    function prevForm(prevStep) {
+      document.querySelectorAll('.form-step').forEach(form => form.style.display = 'none');
+      document.getElementById(`form-step-${prevStep}`).style.display = 'block';
+    }
+  </script>
+</body>
+</html>

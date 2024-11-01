@@ -2,7 +2,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout as auth_logout  
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
@@ -21,10 +20,10 @@ def get_user_dashboard(user):
         elif user_profile.status == 'client':
             return 'client_dashboard'
     except UserProfile.DoesNotExist:
-        return 'index_page'
-    return 'index_page'
+        return 'login_users'
+    return 'login_users'
 
-def index(request):
+def login_users(request):
     if request.user.is_authenticated:
         dashboard = get_user_dashboard(request.user)
         return redirect(dashboard)
@@ -40,19 +39,65 @@ def index(request):
             return redirect(dashboard)
         else:
             messages.error(request, "Invalid username or password.")
-            return redirect('index_page')
+            return redirect('login_users')
         
-    return render(request, 'energy_meter_app/forms/index.html')
+    return render(request, 'energy_meter_app/forms/login_users.html')
 
 @login_required
 def admin_dashboard(request):
     if not request.user.is_superuser:
         return redirect(get_user_dashboard(request.user))
-    context = {
-        'dashboard_type': 'Admin'
-    }
-    return render(request, 'energy_meter_app/dashboards/admin_dashboard.html', context)
 
+    now = timezone.now()
+    
+    # Get filter parameters for each card
+    meter_filter = request.GET.get('meter_filter', 'all')
+    user_filter = request.GET.get('user_filter', 'all')
+    data_filter = request.GET.get('data_filter', 'all')
+
+    # Function to get date range based on filter type
+    def get_date_range(filter_type):
+        if filter_type == 'today':
+            return now.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif filter_type == 'this_month':
+            return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif filter_type == 'this_year':
+            return now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        return None
+
+    # Get counts for meters
+    meter_start_date = get_date_range(meter_filter)
+    meter_query = Meter.objects.all()
+    if meter_start_date:
+        meter_query = meter_query.filter(created_at__gte=meter_start_date)
+    total_meters = meter_query.count()
+
+    # Get counts for users
+    user_start_date = get_date_range(user_filter)
+    user_query = UserProfile.objects.all()
+    if user_start_date:
+        user_query = user_query.filter(created_at__gte=user_start_date)
+    total_users = user_query.count()
+
+    # Get counts for data entries
+    data_start_date = get_date_range(data_filter)
+    data_query = Data.objects.all()
+    if data_start_date:
+        data_query = data_query.filter(created_at__gte=data_start_date)
+    total_data_entries = data_query.count()
+
+    context = {
+        'dashboard_type': 'Admin',
+        'total_meters': total_meters,
+        'total_users': total_users,
+        'total_data_entries': total_data_entries,
+        'meter_filter': meter_filter,
+        'user_filter': user_filter,
+        'data_filter': data_filter,
+    }
+
+    return render(request, 'energy_meter_app/dashboards/admin_dashboard.html', context)
+        
 @login_required
 def staff_dashboard(request):
     try:
@@ -87,7 +132,7 @@ def client_dashboard(request):
 def logout_view(request):
     auth_logout(request)
     messages.success(request, "You have successfully logged out")
-    return redirect('index_page')
+    return redirect('login_users')
 
 @login_required
 def add_user_view(request):
@@ -449,9 +494,9 @@ def delete_data(request, data_id):
 
 @login_required
 def report_data_view(request):
-    datas = None  
-    show_table = False  
-
+    datas = None
+    show_table = False
+    
     if request.method == "POST":
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
@@ -459,12 +504,16 @@ def report_data_view(request):
         if start_date and end_date:
             start_date = timezone.make_aware(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
             end_date = timezone.make_aware(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
-
             end_date = end_date.replace(hour=23, minute=59, second=59)
-
+            
             datas = Data.objects.filter(created_at__range=[start_date, end_date])
-            show_table = True  
+            show_table = True
+    
+    return render(request, 'energy_meter_app/tables/report_data.html', {
+        'datas': datas,
+        'show_table': show_table
+    })
 
-    return render(request, 'energy_meter_app/tables/report_data.html', {'datas': datas, 'show_table': show_table})
+
 
 

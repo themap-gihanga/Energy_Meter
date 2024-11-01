@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import UserProfile, Meter, Data
+from .models import *
+
 
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('name', 'national_id', 'phone_number', 'status', 'is_active', 'created_at')
@@ -26,3 +27,5 @@ class AdminData(admin.ModelAdmin):
     ordering = ['created_at']
 
 admin.site.register(Data, AdminData)
+
+
