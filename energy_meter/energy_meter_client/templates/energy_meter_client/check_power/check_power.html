@@ -1,0 +1,176 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+{% include "energy_meter_client/client_navbar/header.html" %}
+
+<body>
+  {% include "energy_meter_client/client_navbar/navbar.html" %}
+  {% include "energy_meter_client/client_navbar/aside.html" %}
+
+  <main id="main" class="main">
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Check Your Power</h5>
+              
+              <!-- Alert for displaying messages -->
+              <div id="alert-message" class="alert" style="display: none;"></div>
+
+              <!-- Step 1 Form -->
+              <form id="form-step-1" class="row g-3 form-step">
+                {% csrf_token %}
+                <div class="col-md-12">
+                  <input type="text" name="serial_number" class="form-control" placeholder="Enter Meter Serial Number" required>
+                </div>
+                <div class="text-center mt-2">
+                  <button type="submit" class="btn btn-primary">Check Power</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Meter Information Section (Initially Hidden) -->
+    <section id="meter-info-section" class="section dashboard" style="display: none;">
+      <div class="row">
+        <!-- Remaining Energy Card -->
+        <div class="col-xxl-4 col-md-6">
+          <div class="card info-card sales-card">
+            <div class="card-body">
+              <h5 class="card-title">Remaining Energy</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-lightning-charge"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="remaining-energy">0</h6>
+                  <span class="text-muted small pt-2">kWh</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Power Usage Card -->
+        <div class="col-xxl-4 col-md-6">
+          <div class="card info-card revenue-card">
+            <div class="card-body">
+              <h5 class="card-title">Current Power Usage</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-activity"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="current-power">0</h6>
+                  <span class="text-muted small pt-2">Watts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Unit Price Card -->
+        <div class="col-xxl-4 col-md-6">
+          <div class="card info-card customers-card">
+            <div class="card-body">
+              <h5 class="card-title">Unit Price</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="unit-price">0</h6>
+                  <span class="text-muted small pt-2">per kWh</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detailed Information Card -->
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Detailed Information</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong>Owner:</strong> <span id="owner-name">-</span></p>
+                  <p><strong>Voltage:</strong> <span id="voltage">0</span> V</p>
+                  <p><strong>Current:</strong> <span id="current">0</span> A</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong>Power Factor:</strong> <span id="power-factor">0</span></p>
+                  <p><strong>Energy Consumed:</strong> <span id="energy-consumed">0</span> kWh</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+
+  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
+  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
+  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
+  <script src="{% static 'assets/js/main.js' %}"></script>
+
+  <script>
+    document.getElementById('form-step-1').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      const alertDiv = document.getElementById('alert-message');
+      
+      fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          // Hide alert if it was showing
+          alertDiv.style.display = 'none';
+          
+          // Update the meter information
+          document.getElementById('remaining-energy').textContent = data.meter_info.remaining_energy.toFixed(2);
+          document.getElementById('current-power').textContent = data.meter_info.power.toFixed(2);
+          document.getElementById('unit-price').textContent = data.meter_info.unit_price.toFixed(2);
+          document.getElementById('owner-name').textContent = data.meter_info.owner_name;
+          document.getElementById('voltage').textContent = data.meter_info.voltage.toFixed(2);
+          document.getElementById('current').textContent = data.meter_info.current.toFixed(2);
+          document.getElementById('power-factor').textContent = data.meter_info.power_factor.toFixed(2);
+          document.getElementById('energy-consumed').textContent = data.meter_info.energy_consumed.toFixed(2);
+          
+          // Show the meter information section
+          document.getElementById('meter-info-section').style.display = 'block';
+        } else {
+          // Show error message
+          alertDiv.className = 'alert alert-danger';
+          alertDiv.textContent = data.message;
+          alertDiv.style.display = 'block';
+          
+          // Hide the meter information section
+          document.getElementById('meter-info-section').style.display = 'none';
+        }
+      })
+      .catch(error => {
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.textContent = 'An error occurred. Please try again.';
+        alertDiv.style.display = 'block';
+        document.getElementById('meter-info-section').style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html>
