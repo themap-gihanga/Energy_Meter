@@ -190,7 +190,7 @@ def update_user_view(request, user_id):
         user.national_id = request.POST.get('national_id')
         user.phone_number = request.POST.get('phone_number')
         user.address = request.POST.get('address')
-        user.role = request.POST.get('role')  
+        user.status = request.POST.get('role')  
         user.save()
         messages.success(request, "User Successfully updated.") 
         return redirect('manage_users')  
@@ -265,16 +265,18 @@ def add_meter(request):
         serial_number = request.POST.get("serial_number")
         national_id = request.POST.get("national_id")
 
+        # Get or create the UserProfile
         owner_profile, created = UserProfile.objects.get_or_create(national_id=national_id)
         
-        if created:
-            owner_profile.name = request.POST.get("name")
-            owner_profile.phone_number = request.POST.get("phone_number")
-            owner_profile.address = request.POST.get("address")
-            owner_profile.role = request.POST.get("role")
-            owner_profile.save()
-
+        # Update or set UserProfile fields
+        owner_profile.name = request.POST.get("name", owner_profile.name)  # Keep existing name if not provided
+        owner_profile.phone_number = request.POST.get("phone_number", owner_profile.phone_number)
+        owner_profile.address = request.POST.get("address", owner_profile.address)
+        owner_profile.status = request.POST.get("role", owner_profile.status)
+        owner_profile.save()  # Save changes
+        
         try:
+            # Create the Meter
             Meter.objects.create(serial_number=serial_number, owner=owner_profile)
             messages.success(request, "Meter added successfully.")
             return redirect("add_meter")
@@ -341,7 +343,7 @@ def update_meter(request, meter_id):
             user.national_id = request.POST.get('national_id')
             user.phone_number = request.POST.get('phone_number')
             user.address = request.POST.get('address')
-            user.role = request.POST.get('role')
+            user.status = request.POST.get('role')
             user.save()  
 
             messages.success(request, 'Meter and user information updated successfully!')
@@ -513,7 +515,3 @@ def report_data_view(request):
         'datas': datas,
         'show_table': show_table
     })
-
-
-
-

@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -63,5 +62,3 @@ class Data(models.Model):
 
     def __str__(self):
         return f"Data for Meter {self.serial_number.serial_number} - Voltage: {self.voltage}V, Current: {self.current}A"
-
-
