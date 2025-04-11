@@ -42,6 +42,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'energy_meter_app.middleware.StaffAuthenticationMiddleware',
 ]
 
 ROOT_URLCONF = 'energy_meter.urls'
@@ -125,5 +126,7 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGIN_URL = 'index_page'
-LOGIN_REDIRECT_URL = 'index_page' 
+LOGIN_URL = 'login_users'
+LOGIN_REDIRECT_URL = 'get_user_dashboard'
+LOGOUT_REDIRECT_URL = 'login_users'
+

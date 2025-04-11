@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password
 
 class UserProfile(models.Model):
     STATUS_CHOICES = [
@@ -17,6 +19,10 @@ class UserProfile(models.Model):
     
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='client')
     
+    # New fields for staff username and password
+    username = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True)
+    
     class Meta:
         verbose_name = 'User Profile'
         verbose_name_plural = 'User Profiles'
@@ -24,6 +30,13 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"{self.name} - {self.national_id}"
+    
+    def set_password(self, raw_password):
+        if self.status == 'staff':
+            self.password = make_password(raw_password)
+    
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
 
 class Meter(models.Model):
     serial_number = models.CharField(max_length=30, unique=True)

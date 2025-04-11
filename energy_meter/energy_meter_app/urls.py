@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('login_users/', views.login_users, name='login_users'),
+    path('admin_user/', views.admin, name='admin'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('staff-dashboard/', views.staff_dashboard, name='staff_dashboard'),
     path('add_user/', views.add_user_view, name='add_user'),
@@ -12,7 +12,7 @@ urlpatterns = [
     path('update-user/<int:user_id>/', views.update_user_view, name='update_user'),
     path('delete_user/<int:user_id>/', views.delete_user, name='delete_user'),
     path('report_users/', views.report_users_view, name='report_users'),
-    path('logout/', views.logout_view, name='logout'),
+    path('logout/', views.logout_view, name='logout'),  # This is handled correctly
     path('add_meter/', views.add_meter, name='add_meter'),
     path('manage_meter/', views.manage_meter, name='manage_meter'),
     path('update_meter/<int:meter_id>/', views.update_meter, name='update_meter'),

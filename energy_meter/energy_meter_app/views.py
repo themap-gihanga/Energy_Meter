@@ -9,21 +9,24 @@ from . models import *
 from django.db import IntegrityError
 from django.utils import timezone
 import datetime
+import secrets
+import string
 
 def get_user_dashboard(user):
     if user.is_superuser:
         return 'admin_dashboard'
     try:
-        user_profile = UserProfile.objects.get(name=user.username)
-        if user_profile.status == 'staff':
+        # Modified to use username from UserProfile instead of name
+        user_profile = UserProfile.objects.get(username=user.username)
+        if user_profile.status == 'Staff':
             return 'staff_dashboard'
         elif user_profile.status == 'client':
             return 'client_dashboard'
     except UserProfile.DoesNotExist:
-        return 'login_users'
-    return 'login_users'
+        return 'admin'
+    return 'admin'
 
-def login_users(request):
+def admin(request):
     if request.user.is_authenticated:
         dashboard = get_user_dashboard(request.user)
         return redirect(dashboard)
@@ -31,17 +34,41 @@ def login_users(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-            dashboard = get_user_dashboard(user)
-            return redirect(dashboard)
-        else:
-            messages.error(request, "Invalid username or password.")
-            return redirect('login_users')
         
-    return render(request, 'energy_meter_app/forms/login_users.html')
+        try:
+            # First, try to find the user in UserProfile
+            user_profile = UserProfile.objects.get(username=username)
+
+            # Check if the user is a staff user
+            if user_profile.status == 'staff' and user_profile.check_password(password):
+                # Manually log in staff user by creating a session
+                request.session['user_profile_id'] = user_profile.id
+                request.session['username'] = user_profile.username
+                request.session['user_status'] = user_profile.status
+                
+                messages.success(request, f"Welcome, {user_profile.name}!")
+                return redirect('staff_dashboard')  # Replace with actual dashboard URL
+
+        except UserProfile.DoesNotExist:
+            # If no matching UserProfile, try authenticating a regular user
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                dashboard = get_user_dashboard(user)
+                return redirect(dashboard)
+        
+        messages.error(request, "Invalid username or password.")
+        return redirect('admin')
+    
+    return render(request, 'energy_meter_app/forms/admin.html')
+
+@login_required
+def staff_dashboard(request):
+    # Check if the user is staff or not
+    if request.user.is_authenticated and hasattr(request.user, 'userprofile') and request.user.userprofile.status == 'staff':
+        return render(request, 'energy_meter_app/staff_dashboard.html')
+    else:
+        return redirect('admin')  # Redirect non-staff users to the login page
 
 @login_required
 def admin_dashboard(request):
@@ -97,42 +124,6 @@ def admin_dashboard(request):
     }
 
     return render(request, 'energy_meter_app/dashboards/admin_dashboard.html', context)
-        
-@login_required
-def staff_dashboard(request):
-    try:
-        user_profile = UserProfile.objects.get(name=request.user.username)
-        if user_profile.status != 'staff':
-            return redirect(get_user_dashboard(request.user))
-    except UserProfile.DoesNotExist:
-        return redirect('index_page')
-    
-    context = {
-        'dashboard_type': 'Staff',
-        'user_profile': user_profile
-    }
-    return render(request, 'energy_meter_app/dashboards/staff_dashboard.html', context)
-
-@login_required
-def client_dashboard(request):
-    try:
-        user_profile = UserProfile.objects.get(name=request.user.username)
-        if user_profile.status != 'client':
-            return redirect(get_user_dashboard(request.user))
-    except UserProfile.DoesNotExist:
-        return redirect('index_page')
-    
-    context = {
-        'dashboard_type': 'Client',
-        'user_profile': user_profile
-    }
-    return render(request, 'energy_meter_app/dashboards/client_dashboard.html', context)
-
-@login_required
-def logout_view(request):
-    auth_logout(request)
-    messages.success(request, "You have successfully logged out")
-    return redirect('login_users')
 
 @login_required
 def add_user_view(request):
@@ -141,9 +132,10 @@ def add_user_view(request):
         national_id = request.POST.get('national_id')
         phone_number = request.POST.get('phone_number')
         address = request.POST.get('address')
-        status = request.POST.get('role')  
+        status = request.POST.get('role').lower()  # Ensure lowercase to match choices in model
 
         try:
+            # Create UserProfile
             user_profile = UserProfile(
                 name=name,
                 national_id=national_id,
@@ -151,6 +143,27 @@ def add_user_view(request):
                 address=address,
                 status=status  
             )
+            
+            # If status is staff, generate random username and password
+            if status == 'staff':
+                # Generate random username
+                username = f"staff_{national_id[:5]}"  # Shorten the national ID for username
+                
+                # Generate random password
+                def generate_random_password(length=12):
+                    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
+                    return ''.join(secrets.choice(alphabet) for _ in range(length))
+                
+                random_password = generate_random_password()
+                
+                # Set username and password
+                user_profile.username = username
+                user_profile.set_password(random_password)
+                
+                # Optional: Inform the admin about the credentials
+                messages.success(request, f"Staff Credentials - Username: {username}, Password: {random_password}")
+            
+            # Save user profile
             user_profile.save()
             messages.success(request, "User added successfully.")
             return redirect('add_user')
@@ -159,6 +172,12 @@ def add_user_view(request):
             messages.error(request, f"Error adding user: {e}")
 
     return render(request, 'energy_meter_app/forms/add_user.html')
+
+@login_required
+def logout_view(request):
+    auth_logout(request)
+    messages.success(request, "You have successfully logged out")
+    return redirect('admin')
 
 @login_required
 def manage_users_view(request):
