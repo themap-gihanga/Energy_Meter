@@ -68,9 +68,9 @@
                                 {% for meter in meters %}
                                 <tr>
                                     <td>{{ meter.serial_number }}</td>
-                                    <td>{{ meter.owner.name }}</td>
-                                    <td>{{ meter.owner.national_id }}</td>
-                                    <td>{{ meter.owner.phone_number }}</td>
+                                    <td>{{ meter.name }}</td>
+                                    <td>{{ meter.national_id }}</td>
+                                    <td>{{ meter.phone_number }}</td>
                                     <td>{{ meter.created_at }}</td>
                                     <td>{{ meter.updated_at }}</td>
                                 </tr>
@@ -78,7 +78,7 @@
                             </tbody>
                         </table>
                         {% else %}
-                        <p>No users found for the selected date range.</p>
+                        <p>No Data found for the selected date range.</p>
                         {% endif %}
                     </div>
                 </div>

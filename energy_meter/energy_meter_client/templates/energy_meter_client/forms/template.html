@@ -1,111 +1,201 @@
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<body>
-  <main id="main" class="main">
-    <div class="pagetitle">
-      <h1>Buy Electricity</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="{% url 'buy_power_form' %}">Buy Power</a></li>
-        </ol>
-      </nav>
+<div class="pagetitle">
+  <h1>Buy Electricity</h1>
+  <nav>
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{% url 'customer_service' %}">Buy Power</a></li>
+    </ol>
+  </nav>
+</div>
+
+{% if messages %}
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-12">
+      {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show text-center" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
     </div>
+  </div>
+</div>
+{% endif %}
 
-    <section class="section">
-      <div class="row">
-        <div class="col-lg-12">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title">Buy Power</h5>
-              
-              <!-- Alert for displaying messages -->
-              <div id="alert-message" class="alert" style="display: none;"></div>
+<section class="section">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Buy Power</h5>
+          
+          <!-- Alert for displaying messages -->
+          <div id="alert-message" class="alert" style="display: none;"></div>
 
-              <!-- Step 1 Form -->
-              <form id="form-step-1" class="row g-3 form-step">
-                {% csrf_token %}
-                <div class="col-md-12">
-                  <label class="form-label">Enter Meter Number</label>
-                  <input type="text" name="serial_number" class="form-control" placeholder="Enter Meter Serial Number" required>
-                </div>
-                <div class="text-center mt-5">
-                  <button type="submit" class="btn btn-primary">Verify Meter</button>
-                </div>
-              </form>
+          <!-- Step 1 Form -->
+          <form id="form-step-1" class="row g-3 form-step">
+            {% csrf_token %}
+            <div class="col-md-12">
+              <label class="form-label">Enter Meter Number</label>
+              <input type="text" name="serial_number" class="form-control" placeholder="Enter Meter Serial Number" required>
+            </div>
+            <div class="text-center mt-5">
+              <button type="submit" class="btn btn-primary">Verify Meter</button>
+            </div>
+          </form>
 
-              <!-- Step 2 Form -->
-              <form id="form-step-2" class="row g-3 form-step" method="POST" style="display: none;">
-                {% csrf_token %}
-                <div class="col-md-12">
-                  <label class="form-label">Enter Amount</label>
-                  <input type="number" name="amount" class="form-control" placeholder="Enter Amount" required min="1">
-                </div>
-                <div class="text-center mt-5">
-                  <button type="button" class="btn btn-secondary" onclick="prevForm(1)">Back</button>
-                  <button type="submit" class="btn btn-primary">Purchase Power</button>
-                </div>
-              </form>
+          <!-- Step 2 Form -->
+          <form id="form-step-2" class="row g-3 form-step" style="display: none;">
+            {% csrf_token %}
+            <div class="col-md-12">
+              <div class="meter-info mb-3 p-3 bg-success rounded" style="color: white;">
+                <h6>Meter Information</h6>
+                <p id="meter-details"></p>
+              </div>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">Select Amount</label>
+              <select name="amount" class="form-control" required>
+                <option value="" disabled selected>-- Select Amount --</option>
+                <option value="100">100 RWF - 1 Unit</option>
+                <option value="200">200 RWF - 2 Units</option>
+                <option value="500">500 RWF - 5 Units</option>
+                <option value="1000">1,000 RWF - 10 Units</option>
+                <option value="2000">2,000 RWF - 20 Units</option>
+                <option value="5000">5,000 RWF - 50 Units</option>
+                <option value="10000">10,000 RWF - 100 Units</option>
+              </select>
+            </div>
+            <div class="text-center mt-5">
+              <button type="button" class="btn btn-secondary" onclick="prevForm(1)">Back</button>
+              <button type="submit" class="btn btn-primary">Purchase Power</button>
+            </div>
+          </form>
+
+          <!-- Purchase Confirmation (Step 3) -->
+          <div id="purchase-confirmation" class="form-step" style="display: none;">
+            <div class="purchase-details p-4 bg-success rounded" style="color: white;">
+              <h5 class="text-success">Purchase Successful!</h5>
+              <div class="details mt-4">
+                <p><strong>Token:</strong> <span id="confirmation-token"></span></p>
+                <p><strong>Units:</strong> <span id="confirmation-units"></span></p>
+                <p><strong>Amount:</strong> <span id="confirmation-amount"></span> RWF</p>
+                <p><strong>Meter Number:</strong> <span id="confirmation-meter"></span></p>
+                <p><strong>Date:</strong> <span id="confirmation-date"></span></p>
+              </div>
+            </div>
+            <div class="text-center mt-4">
+              <button type="button" class="btn btn-primary" onclick="resetForm()">Make Another Purchase</button>
             </div>
           </div>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
+</section>
 
+<script>
+  // Store meter info globally
+  let currentMeter = null;
 
-  <script src="{% static 'assets/vendor/apexcharts/apexcharts.min.js' %}"></script>
-  <script src="{% static 'assets/vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-  <script src="{% static 'assets/vendor/chart.js/chart.umd.js' %}"></script>
-  <script src="{% static 'assets/vendor/echarts/echarts.min.js' %}"></script>
-  <script src="{% static 'assets/vendor/quill/quill.js' %}"></script>
-  <script src="{% static 'assets/js/main.js' %}"></script>
-
-  <script>
-    document.getElementById('form-step-1').addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      const formData = new FormData(this);
-      const alertDiv = document.getElementById('alert-message');
-      
-      fetch('{% url "buy_power_form" %}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          // Show success message and proceed to next step
-          alertDiv.className = 'alert alert-success';
-          alertDiv.textContent = data.message;
-          alertDiv.style.display = 'block';
-          
-          setTimeout(() => {
-            document.querySelectorAll('.form-step').forEach(f => f.style.display = 'none');
-            document.getElementById('form-step-2').style.display = 'block';
-          }, 1500);
-        } else {
-          // Show error message
-          alertDiv.className = 'alert alert-danger';
-          alertDiv.textContent = data.message;
-          alertDiv.style.display = 'block';
-        }
-      })
-      .catch(error => {
+  document.getElementById('form-step-1').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const alertDiv = document.getElementById('alert-message');
+    
+    fetch('{% url "buy_power_form" %}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        // Store meter info
+        currentMeter = data.meter_info;
+        
+        // Display meter info in step 2
+        document.getElementById('meter-details').innerHTML = `
+          <strong>Number:</strong> ${currentMeter.serial_number}<br>
+          <strong>Name:</strong> ${currentMeter.name}<br>
+          <strong>Address:</strong> ${currentMeter.address}
+        `;
+        
+        // Proceed to step 2
+        document.querySelectorAll('.form-step').forEach(f => f.style.display = 'none');
+        document.getElementById('form-step-2').style.display = 'block';
+      } else {
+        // Show error message
         alertDiv.className = 'alert alert-danger';
-        alertDiv.textContent = 'An error occurred. Please try again.';
+        alertDiv.textContent = data.message;
         alertDiv.style.display = 'block';
-      });
+      }
+    })
+    .catch(error => {
+      alertDiv.className = 'alert alert-danger';
+      alertDiv.textContent = 'An error occurred. Please try again.';
+      alertDiv.style.display = 'block';
     });
+  });
 
-    function prevForm(prevStep) {
-      document.querySelectorAll('.form-step').forEach(form => form.style.display = 'none');
-      document.getElementById(`form-step-${prevStep}`).style.display = 'block';
-      document.getElementById('alert-message').style.display = 'none';
-    }
-  </script>
-</body>
-</html>
+  document.getElementById('form-step-2').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const alertDiv = document.getElementById('alert-message');
+    
+    // Add the meter number to form data
+    formData.append('serial_number', currentMeter.serial_number);
+    
+    fetch('{% url "buy_power_form" %}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.status === 'success') {
+        // Display purchase confirmation
+        const details = data.purchase_details;
+        document.getElementById('confirmation-token').textContent = details.token;
+        document.getElementById('confirmation-units').textContent = details.units;
+        document.getElementById('confirmation-amount').textContent = details.amount;
+        document.getElementById('confirmation-meter').textContent = details.meter_number;
+        document.getElementById('confirmation-date').textContent = details.date;
+        
+        // Show confirmation step
+        document.querySelectorAll('.form-step').forEach(f => f.style.display = 'none');
+        document.getElementById('purchase-confirmation').style.display = 'block';
+      } else {
+        // Show error message
+        alertDiv.className = 'alert alert-danger';
+        alertDiv.textContent = data.message;
+        alertDiv.style.display = 'block';
+      }
+    })
+    .catch(error => {
+      alertDiv.className = 'alert alert-danger';
+      alertDiv.textContent = 'An error occurred. Please try again.';
+      alertDiv.style.display = 'block';
+    });
+  });
+
+  function prevForm(prevStep) {
+    document.querySelectorAll('.form-step').forEach(form => form.style.display = 'none');
+    document.getElementById(`form-step-${prevStep}`).style.display = 'block';
+    document.getElementById('alert-message').style.display = 'none';
+  }
+
+  function resetForm() {
+    document.querySelectorAll('.form-step').forEach(form => form.style.display = 'none');
+    document.getElementById('form-step-1').style.display = 'block';
+    document.getElementById('form-step-1').reset();
+    currentMeter = null;
+  }
+</script>

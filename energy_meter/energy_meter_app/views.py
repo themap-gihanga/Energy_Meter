@@ -1,536 +1,277 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout as auth_logout  
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.http import JsonResponse
 from . models import *
-from django.db import IntegrityError
-from django.utils import timezone
-import datetime
-import secrets
+from django.contrib.auth.hashers import make_password
+from django.http import JsonResponse
+import random
+import logging
 import string
+from functools import wraps
+from datetime import datetime, timedelta
+from django.utils.dateparse import parse_date
 
-def get_user_dashboard(user):
-    if user.is_superuser:
-        return 'admin_dashboard'
-    try:
-        # Modified to use username from UserProfile instead of name
-        user_profile = UserProfile.objects.get(username=user.username)
-        if user_profile.status == 'Staff':
-            return 'staff_dashboard'
-        elif user_profile.status == 'client':
-            return 'client_dashboard'
-    except UserProfile.DoesNotExist:
-        return 'admin'
-    return 'admin'
-
-def admin(request):
-    if request.user.is_authenticated:
-        dashboard = get_user_dashboard(request.user)
-        return redirect(dashboard)
-
+def index(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+        remember_me = request.POST.get('remember') == 'true'
         
-        try:
-            # First, try to find the user in UserProfile
-            user_profile = UserProfile.objects.get(username=username)
-
-            # Check if the user is a staff user
-            if user_profile.status == 'staff' and user_profile.check_password(password):
-                # Manually log in staff user by creating a session
-                request.session['user_profile_id'] = user_profile.id
-                request.session['username'] = user_profile.username
-                request.session['user_status'] = user_profile.status
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            
+            if not remember_me:
+                request.session.set_expiry(0)  
+            
+            if user.is_superuser:
+                messages.success(request, f"Welcome, {user.username}!")
+                return redirect('admin_dashboard')  
+            else:
+                messages.success(request, f"Welcome, {user.username}!")
+                return redirect('user_dashboard')  
+        
+        else:
+            # Try to authenticate as a Meter client
+            try:
+                meter = Meter.objects.get(username=username)
                 
-                messages.success(request, f"Welcome, {user_profile.name}!")
-                return redirect('staff_dashboard')  # Replace with actual dashboard URL
+                # Check password using the custom method in Meter model
+                if meter.check_password(password):
+                    # Successful Meter authentication
+                    # Store meter info in session instead of using Django's auth system
+                    request.session['meter_id'] = meter.id
+                    request.session['meter_username'] = meter.username
+                    request.session['meter_name'] = meter.name
+                    request.session['is_meter_user'] = True
+                    
+                    if not remember_me:
+                        request.session.set_expiry(0)
+                    
+                    messages.success(request, f"Welcome, {meter.name}!")
+                    return redirect('customer_service')  
+                else:
+                    messages.error(request, "Invalid username or password")
+            except Meter.DoesNotExist:
+                messages.error(request, "Invalid username or password")
+    
+    return render(request, "energy_meter_app/forms/index.html")
 
-        except UserProfile.DoesNotExist:
-            # If no matching UserProfile, try authenticating a regular user
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                dashboard = get_user_dashboard(user)
-                return redirect(dashboard)
+# Example decorator for protecting meter client views
+def meter_login_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(request, *args, **kwargs):
+        # Check for both meter users AND Django users (especially superusers)
+        is_meter_user = request.session.get('is_meter_user', False)
+        is_django_user = request.user.is_authenticated
         
-        messages.error(request, "Invalid username or password.")
-        return redirect('admin')
+        if not (is_meter_user or is_django_user):
+            messages.error(request, "Please log in to access this page")
+            return redirect('index')
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
+
+# Logout view for both Django users and meter users
+def logout_view(request):
+    # Handle Django user logout
+    if request.user.is_authenticated:
+        from django.contrib.auth import logout
+        logout(request)
     
-    return render(request, 'energy_meter_app/forms/admin.html')
-
-@login_required
-def staff_dashboard(request):
-    # Check if the user is staff or not
-    if request.user.is_authenticated and hasattr(request.user, 'userprofile') and request.user.userprofile.status == 'staff':
-        return render(request, 'energy_meter_app/staff_dashboard.html')
-    else:
-        return redirect('admin')  # Redirect non-staff users to the login page
-
-@login_required
-def admin_dashboard(request):
-    if not request.user.is_superuser:
-        return redirect(get_user_dashboard(request.user))
-
-    now = timezone.now()
+    # Handle meter user logout
+    if 'meter_id' in request.session:
+        del request.session['meter_id']
+    if 'meter_username' in request.session:
+        del request.session['meter_username']
+    if 'meter_name' in request.session:
+        del request.session['meter_name']
+    if 'is_meter_user' in request.session:
+        del request.session['is_meter_user']
     
-    # Get filter parameters for each card
-    meter_filter = request.GET.get('meter_filter', 'all')
-    user_filter = request.GET.get('user_filter', 'all')
-    data_filter = request.GET.get('data_filter', 'all')
+    # Clear all session data
+    request.session.flush()
+    
+    # Show logout message
+    messages.success(request, "You have been logged out successfully")
+    
+    response = redirect('index')
+    # Add cache-control headers to prevent back-button access
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    
+    return response
 
-    # Function to get date range based on filter type
-    def get_date_range(filter_type):
-        if filter_type == 'today':
-            return now.replace(hour=0, minute=0, second=0, microsecond=0)
-        elif filter_type == 'this_month':
-            return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        elif filter_type == 'this_year':
-            return now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        return None
+@meter_login_required
+def dashboard(request):
+    return render(request, "energy_meter_app/dashboards/admin_dashboard.html")
 
-    # Get counts for meters
-    meter_start_date = get_date_range(meter_filter)
-    meter_query = Meter.objects.all()
-    if meter_start_date:
-        meter_query = meter_query.filter(created_at__gte=meter_start_date)
-    total_meters = meter_query.count()
-
-    # Get counts for users
-    user_start_date = get_date_range(user_filter)
-    user_query = UserProfile.objects.all()
-    if user_start_date:
-        user_query = user_query.filter(created_at__gte=user_start_date)
-    total_users = user_query.count()
-
-    # Get counts for data entries
-    data_start_date = get_date_range(data_filter)
-    data_query = Data.objects.all()
-    if data_start_date:
-        data_query = data_query.filter(created_at__gte=data_start_date)
-    total_data_entries = data_query.count()
-
-    context = {
-        'dashboard_type': 'Admin',
-        'total_meters': total_meters,
-        'total_users': total_users,
-        'total_data_entries': total_data_entries,
-        'meter_filter': meter_filter,
-        'user_filter': user_filter,
-        'data_filter': data_filter,
-    }
-
-    return render(request, 'energy_meter_app/dashboards/admin_dashboard.html', context)
-
-@login_required
-def add_user_view(request):
-    if request.method == "POST":
-        name = request.POST.get('name')
+@meter_login_required
+def add_meter(request):
+    if request.method == 'POST':
+        serial_number = request.POST.get('serial_number')
         national_id = request.POST.get('national_id')
+        name = request.POST.get('name')
         phone_number = request.POST.get('phone_number')
         address = request.POST.get('address')
-        status = request.POST.get('role').lower()  # Ensure lowercase to match choices in model
-
+        status = request.POST.get('status', 'client')
+        is_active = request.POST.get('is_active', 'True') == 'True'
+        
+        # Validate required fields
+        if not all([serial_number, national_id, name, phone_number, address]):
+            messages.error(request, 'All fields are required')
+            return redirect('add_meter')
+        
+        # Check if meter with same serial number already exists
+        if Meter.objects.filter(serial_number=serial_number).exists():
+            messages.error(request, 'Meter with this serial number already exists')
+            return redirect('add_meter')
+        
+        # Check if national ID already exists
+        if Meter.objects.filter(national_id=national_id).exists():
+            messages.error(request, 'User with this national ID already exists')
+            return redirect('add_meter')
+        
+        # Check if phone number already exists
+        if Meter.objects.filter(phone_number=phone_number).exists():
+            messages.error(request, 'User with this phone number already exists')
+            return redirect('add_meter')
+        
+        # Generate default username (first part of name + last 4 digits of national ID)
+        first_name = name.split()[0].lower() if name.split() else ''
+        username = f"{first_name}{national_id[-4:]}"
+        
+        # Check if username exists and make it unique if necessary
+        original_username = username
+        counter = 1
+        while Meter.objects.filter(username=username).exists():
+            username = f"{original_username}{counter}"
+            counter += 1
+        
+        # Generate random password (8 characters)
+        password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        
+        # Create new meter
         try:
-            # Create UserProfile
-            user_profile = UserProfile(
-                name=name,
+            meter = Meter(
+                serial_number=serial_number,
                 national_id=national_id,
+                name=name,
                 phone_number=phone_number,
                 address=address,
-                status=status  
+                role=status,
+                is_active=is_active,
+                username=username,
+                password=make_password(password)  # Hash the password
             )
+            meter.save()
             
-            # If status is staff, generate random username and password
-            if status == 'staff':
-                # Generate random username
-                username = f"staff_{national_id[:5]}"  # Shorten the national ID for username
-                
-                # Generate random password
-                def generate_random_password(length=12):
-                    alphabet = string.ascii_letters + string.digits + "!@#$%^&*()"
-                    return ''.join(secrets.choice(alphabet) for _ in range(length))
-                
-                random_password = generate_random_password()
-                
-                # Set username and password
-                user_profile.username = username
-                user_profile.set_password(random_password)
-                
-                # Optional: Inform the admin about the credentials
-                messages.success(request, f"Staff Credentials - Username: {username}, Password: {random_password}")
+            # Show success message with generated credentials
+            messages.success(
+                request, 
+                f'Meter added successfully! Default login credentials - Username: {username}, Password: {password}'
+            )
+            return redirect('manage_meters')  # Redirect to meter list page
             
-            # Save user profile
-            user_profile.save()
-            messages.success(request, "User added successfully.")
-            return redirect('add_user')
-          
         except Exception as e:
-            messages.error(request, f"Error adding user: {e}")
+            messages.error(request, f'Error adding meter: {str(e)}')
+            return redirect('add_meter')
+    
+    # If GET request, just render the form
+    return render(request, "energy_meter_app/forms/add_meter.html")
 
-    return render(request, 'energy_meter_app/forms/add_user.html')
+@meter_login_required
+def manage_meters(request):
+    meters = Meter.objects.all()
+    return render(request, "energy_meter_app/tables/manage_meter.html", {'meters': meters})
 
-@login_required
-def logout_view(request):
-    auth_logout(request)
-    messages.success(request, "You have successfully logged out")
-    return redirect('admin')
-
-@login_required
-def manage_users_view(request):
-    users = UserProfile.objects.all()  
-    return render(request, 'energy_meter_app/tables/manage_users.html', {'users': users})
-
-@login_required
-def activate_user(request, user_id):
-    user = get_object_or_404(UserProfile, id=user_id)
-    user.is_active = True
-    user.save()
-    messages.success(request, "User Now Active.")
-    return redirect('manage_users')
-
-@login_required
-def deactivate_user(request, user_id):
-    user = get_object_or_404(UserProfile, id=user_id)
-    user.is_active = False
-    messages.success(request, "User Now Inactive.")
-    user.save()
-    return redirect('manage_users')
-
-@login_required
-def update_user_view(request, user_id):
-    user = get_object_or_404(UserProfile, id=user_id)
-
+@meter_login_required
+def update_meter(request, meter_id):
     if request.method == 'POST':
-        user.name = request.POST.get('name')
-        user.national_id = request.POST.get('national_id')
-        user.phone_number = request.POST.get('phone_number')
-        user.address = request.POST.get('address')
-        user.status = request.POST.get('role')  
-        user.save()
-        messages.success(request, "User Successfully updated.") 
-        return redirect('manage_users')  
-
-    context = {
-        'user': user
-    }
-    return render(request, 'energy_meter_app/forms/update_users.html', context)
-
-@login_required
-@require_POST
-@ensure_csrf_cookie
-def delete_user(request, user_id):
-    try:
-        user = get_object_or_404(UserProfile, id=user_id)
-        
-        if not request.user.is_superuser:
-            return JsonResponse({
-                'status': 'error',
-                'message': "You don't have permission to delete users."
-            }, status=403)
-        
-        user_name = user.name
-        
-        try:
-            user.delete()
-            
-            return JsonResponse({
-                'status': 'success',
-                'message': f"User {user_name} has been successfully deleted."
-            })
-            
-        except Exception as e:
-            print(f"Error deleting user: {str(e)}")
-            return JsonResponse({
-                'status': 'error',
-                'message': "Failed to delete user. Please try again."
-            }, status=500)
-            
-    except Exception as e:
-        print(f"Error in delete_user view: {str(e)}")
-        return JsonResponse({
-            'status': 'error',
-            'message': "An error occurred while processing your request."
-        }, status=500)
+        meter = Meter.objects.get(id=meter_id)
+        meter.serial_number = request.POST.get('serial_number')
+        meter.national_id = request.POST.get('national_id')
+        meter.name = request.POST.get('name')
+        meter.phone_number = request.POST.get('phone_number')
+        meter.address = request.POST.get('address')
+        meter.role = request.POST.get('status')
+        meter.is_active = request.POST.get('is_active') == 'True'
+        meter.save()
+        messages.success(request, 'Meter updated successfully')
+        return redirect('manage_meters')
+    else:
+        meter = Meter.objects.get(id=meter_id)
+        return render(request, "energy_meter_app/forms/update_meter.html", {'meter': meter})
     
-@login_required
-def report_users_view(request):
-    users = None  
-    show_table = False  
-
-    if request.method == "POST":
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        
-        if start_date and end_date:
-            start_date = timezone.make_aware(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
-            end_date = timezone.make_aware(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
-
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-
-            users = UserProfile.objects.filter(created_at__range=[start_date, end_date])
-            show_table = True  
-
-    return render(request, 'energy_meter_app/tables/report_users.html', {'users': users, 'show_table': show_table})
-
-@login_required
-def add_meter(request):
-    userprofiles = UserProfile.objects.all()
-    
-    if request.method == "POST":
-        serial_number = request.POST.get("serial_number")
-        national_id = request.POST.get("national_id")
-
-        # Get or create the UserProfile
-        owner_profile, created = UserProfile.objects.get_or_create(national_id=national_id)
-        
-        # Update or set UserProfile fields
-        owner_profile.name = request.POST.get("name", owner_profile.name)  # Keep existing name if not provided
-        owner_profile.phone_number = request.POST.get("phone_number", owner_profile.phone_number)
-        owner_profile.address = request.POST.get("address", owner_profile.address)
-        owner_profile.status = request.POST.get("role", owner_profile.status)
-        owner_profile.save()  # Save changes
-        
-        try:
-            # Create the Meter
-            Meter.objects.create(serial_number=serial_number, owner=owner_profile)
-            messages.success(request, "Meter added successfully.")
-            return redirect("add_meter")
-        
-        except IntegrityError:
-            messages.error(request, "A meter with this serial number already exists.")
-            return redirect("add_meter")
-    
-    return render(request, "energy_meter_app/forms/add_meter.html", {"userprofiles": userprofiles})
-
-@login_required
-def manage_meter(request):
-    meters = Meter.objects.all()  
-    return render(request, 'energy_meter_app/tables/manage_meter.html', {'meters': meters})
-
-@login_required
-@require_POST
-@ensure_csrf_cookie
+@meter_login_required
 def delete_meter(request, meter_id):
-    try:
-        meter = get_object_or_404(Meter, id=meter_id)
-        
-        if not request.user.is_superuser:
-            return JsonResponse({
-                'status': 'error',
-                'message': "You don't have permission to delete meter."
-            }, status=403)
-        
-        meter_name = meter.serial_number
-        
+    if request.method == 'POST':
         try:
+            meter = get_object_or_404(Meter, id=meter_id)
+            
+            serial_number = meter.serial_number
+            
             meter.delete()
             
             return JsonResponse({
                 'status': 'success',
-                'message': f"Energy Meter {meter_name} has been successfully deleted."
+                'message': f'Energy Meter with serial number {serial_number} has been deleted successfully.'
             })
             
         except Exception as e:
-            print(f"Error deleting Energy Meter: {str(e)}")
+            logging.error(f"Error deleting meter {meter_id}: {str(e)}")
+            
             return JsonResponse({
                 'status': 'error',
-                'message': "Failed to delete user. Please try again."
+                'message': 'An error occurred while trying to delete the meter.'
             }, status=500)
-            
-    except Exception as e:
-        print(f"Error in delete_meter view: {str(e)}")
+    else:
         return JsonResponse({
             'status': 'error',
-            'message': "An error occurred while processing your request."
-        }, status=500)
-
-@login_required
-def update_meter(request, meter_id):
-    meter = get_object_or_404(Meter, id=meter_id)
-    user = meter.owner  
-
+            'message': 'This endpoint only accepts POST requests.'
+        }, status=405)
+    
+@meter_login_required
+def report_meters(request):
+    show_table = False
+    meters = []
+    
     if request.method == 'POST':
-        try:
-            meter.serial_number = request.POST.get('serial_number')
-            meter.save()  
-
-            user.name = request.POST.get('name')
-            user.national_id = request.POST.get('national_id')
-            user.phone_number = request.POST.get('phone_number')
-            user.address = request.POST.get('address')
-            user.status = request.POST.get('role')
-            user.save()  
-
-            messages.success(request, 'Meter and user information updated successfully!')
-            return redirect('manage_meter')
-
-        except IntegrityError:
-            messages.error(request, 'The National ID entered is already in use by another user. Please try a different one.')
-            
-    return render(request, 'energy_meter_app/forms/update_meter.html', {'meter': meter, 'user': user})
-
-@login_required
-def report_meters_view(request):
-    meters = None  
-    show_table = False  
-
-    if request.method == "POST":
         start_date = request.POST.get('start_date')
         end_date = request.POST.get('end_date')
         
-        if start_date and end_date:
-            start_date = timezone.make_aware(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
-            end_date = timezone.make_aware(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
-
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-
-            meters = Meter.objects.filter(created_at__range=[start_date, end_date])
-            show_table = True  
-
-    return render(request, 'energy_meter_app/tables/report_meters.html', {'meters': meters, 'show_table': show_table})
-
-@login_required
-def add_data(request):
-    meters = Meter.objects.all()
-
-    if request.method == "POST":
-        serial_number = request.POST.get("serial_number")
-        voltage = float(request.POST.get("voltage", 0))
-        current = float(request.POST.get("current", 0))
-        energy = float(request.POST.get("energy", 0))
-        power_factor = float(request.POST.get("power_factor", 1))
-        unit_price = request.POST.get("unit_price")
-
-        # Calculate power if needed
-        power = voltage * current * power_factor  # Or adjust formula as needed
-
         try:
-            serial_meter = Meter.objects.get(serial_number=serial_number)
-        except Meter.DoesNotExist:
-            messages.error(request, "The meter with this serial number does not exist. Please register the meter first.")
-            return redirect("add_data")
-
-        try:
-            Data.objects.create(
-                voltage=voltage,
-                current=current,
-                energy=energy,
-                power_factor=power_factor,
-                unit_price=unit_price,
-                serial_number=serial_meter,
-                power=power,  # Ensure `power` is saved here if it's in the model
+            # Parse the date strings to datetime objects
+            start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            # Add one day to end_date to include the entire day
+            end_date_obj = datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)
+            
+            # Filter meters created between the start and end dates
+            meters = Meter.objects.filter(
+                created_at__gte=start_date_obj,
+                created_at__lt=end_date_obj
             )
-            messages.success(request, "Data added successfully.")
-            return redirect("add_data")
-
-        except IntegrityError as e:
-            messages.error(request, f"An error occurred while adding data: {e}")
-            return redirect("add_data")
-
+            
+            show_table = True
+            
+            if not meters.exists():
+                messages.info(request, "No meters found for the selected date range.")
+        
+        except Exception as e:
+            messages.error(request, f"Error processing date range: {str(e)}")
+    
     context = {
         'meters': meters,
+        'show_table': show_table,
     }
-    return render(request, "energy_meter_app/forms/add_data.html", context)
-
-@login_required
-def get_meter_data(request, serial_number):
-    try:
-        # Fetch the latest data entry for the selected meter
-        meter = Meter.objects.get(serial_number=serial_number)
-        latest_data = Data.objects.filter(serial_number=meter).order_by('-timestamp').first()
-
-        if latest_data:
-            data = {
-                'voltage': latest_data.voltage,
-                'current': latest_data.current,
-                'energy': latest_data.energy,
-                'power_factor': latest_data.power_factor,
-            }
-            return JsonResponse(data)
-        else:
-            return JsonResponse({'error': 'No data found for this meter'}, status=404)
-    except Meter.DoesNotExist:
-        return JsonResponse({'error': 'Meter not found'}, status=404)
     
-@login_required
-def manage_data(request):
-    datas = Data.objects.all()  
-    return render(request, 'energy_meter_app/tables/manage_data.html', {'datas': datas})
+    return render(request, "energy_meter_app/tables/report_meters.html", context)
 
-@login_required
-def update_data(request, data_id):
-    data = get_object_or_404(Data, id=data_id)  # Use your actual model name
-
-    if request.method == "POST":
-        # Update your fields accordingly
-        data.voltage = float(request.POST.get("voltage", 0))
-        data.current = float(request.POST.get("current", 0))
-        data.energy = float(request.POST.get("energy", 0))
-        data.power_factor = float(request.POST.get("power_factor", 1))
-        data.unit_price = request.POST.get("unit_price")
-
-        try:
-            data.save()
-            messages.success(request, "Meter data updated successfully.")
-            return redirect("manage_data")  # Redirect to your manage data page
-
-        except IntegrityError as e:
-            messages.error(request, f"An error occurred while updating data: {e}")
-            return redirect("manage_data")
-
-    context = {
-        'data': data,  # Ensure you're passing the correct context
-    }
-    return render(request, "energy_meter_app/forms/update_data.html", context)
-
-@login_required
-@require_POST
-@ensure_csrf_cookie
-def delete_data(request, data_id):
-    try:
-        data = get_object_or_404(Data, id=data_id)
-        if not request.user.is_superuser:
-            return JsonResponse({
-                'status': 'error',
-                'message': "You don't have permission to delete this data."
-            }, status=403)
-
-        data.delete()
-        return JsonResponse({
-            'status': 'success',
-            'message': f"Data for Energy Meter has been successfully deleted."
-        })
-
-    except Exception as e:
-        print(f"Error in delete_data view: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': "An error occurred while processing your request."
-        }, status=500)
+@meter_login_required
+def data_display(request):
+    meters = Meter.objects.all() 
+    return render(request, "energy_meter_app/data/data_display.html", {'meters': meters})
 
 
-@login_required
-def report_data_view(request):
-    datas = None
-    show_table = False
-    
-    if request.method == "POST":
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        
-        if start_date and end_date:
-            start_date = timezone.make_aware(datetime.datetime.strptime(start_date, '%Y-%m-%d'))
-            end_date = timezone.make_aware(datetime.datetime.strptime(end_date, '%Y-%m-%d'))
-            end_date = end_date.replace(hour=23, minute=59, second=59)
-            
-            datas = Data.objects.filter(created_at__range=[start_date, end_date])
-            show_table = True
-    
-    return render(request, 'energy_meter_app/tables/report_data.html', {
-        'datas': datas,
-        'show_table': show_table
-    })

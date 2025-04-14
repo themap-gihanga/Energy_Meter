@@ -57,9 +57,9 @@
                                 {% for meter in meters %}
                                 <tr>
                                     <td>{{ meter.serial_number }}</td>
-                                    <td>{{ meter.owner.name }}</td>
-                                    <td>{{ meter.owner.national_id }}</td>
-                                    <td>{{ meter.owner.phone_number }}</td>
+                                    <td>{{ meter.name }}</td>
+                                    <td>{{ meter.national_id }}</td>
+                                    <td>{{ meter.phone_number }}</td>
                                     <td>{{ meter.created_at }}</td>
                                     <td>
                                         <div class="dropdown">
@@ -67,7 +67,7 @@
                                                 Actions
                                             </button>
                                             <ul class="dropdown-menu" aria-labelledby="actionDropdown{{ meter.id }}">
-                                                <li><a class="dropdown-item text-info" href="{% url 'update_meter' meter.id %}">
+                                                <li><a class="dropdown-item text-info" href="{% url 'update_meter' meter.id %}"> 
                                                     <i class="bi bi-pencil-square"></i> Update
                                                 </a></li>
                                                 <li><hr class="dropdown-divider"></li>

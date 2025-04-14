@@ -42,7 +42,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'energy_meter_app.middleware.StaffAuthenticationMiddleware',
+    'energy_meter_app.middleware.meter_auth_middleware',
 ]
 
 ROOT_URLCONF = 'energy_meter.urls'
